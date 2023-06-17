@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
-	_ "github.com/lib/pq"
+	"github.com/joho/godotenv"
 )
 
 type Counter struct {
@@ -32,6 +34,13 @@ func main() {
 
 	log.Println("Starting server on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func loadEnvVariables() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file:", err)
+	}
 }
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +74,10 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 			message := string(p)
 			fmt.Println("Received message:", message)
 			// Add your own logic to process the message
+			if message == "increment" {
+				// Call the counting API by incrementing the count
+				incrementCount(conn)
+			}
 
 		case websocket.BinaryMessage:
 			// Handle binary message
@@ -77,6 +90,35 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		}
+	}
+}
+
+func incrementCount(conn *websocket.Conn) {
+	counter.Lock()
+	defer counter.Unlock()
+
+	counter.Count++
+	log.Println("Count incremented:", counter.Count)
+
+	// Update the count in the database
+	err := updateCountInDB(counter.Count)
+	if err != nil {
+		log.Println("Failed to update count in the database:", err)
+	}
+
+	// Create a JSON payload with the current count
+	payload := map[string]int{"count": counter.Count}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("Failed to marshal JSON payload:", err)
+		return
+	}
+
+	// Emit the JSON payload to the socket connection
+	err = conn.WriteMessage(websocket.TextMessage, jsonPayload)
+	if err != nil {
+		log.Println("Failed to emit message to socket connection:", err)
+		return
 	}
 }
 
@@ -108,11 +150,17 @@ func incrementCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func initDB() *sql.DB {
-	db, err := sql.Open("postgres", "postgres://username:password@localhost/dbname?sslmode=disable")
+	// Load environment variables from .env file
+	loadEnvVariables()
+
+	// Retrieve the database URI from the environment variable
+	dbURI := os.Getenv("DATABASE_URI")
+
+	// Open the database connection
+	db, err := sql.Open("mysql", dbURI)
 	if err != nil {
 		log.Fatal("Failed to connect to the database:", err)
 	}
-
 	// Create the count table if it doesn't exist
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS count (
 		id SERIAL PRIMARY KEY,
@@ -131,7 +179,7 @@ func initDB() *sql.DB {
 }
 
 func updateCountInDB(count int) error {
-	_, err := db.Exec("INSERT INTO count (value) VALUES ($1)", count)
+	_, err := db.Exec("INSERT INTO count (value) VALUES (?)", count)
 	if err != nil {
 		return err
 	}
