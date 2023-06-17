@@ -6,11 +6,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
+
+func adsf() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 type Counter struct {
 	Count int
@@ -31,7 +40,7 @@ func main() {
 	http.HandleFunc("/increment", incrementCountHandler)
 
 	log.Println("Starting server on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(os.Getenv("PORT"), nil))
 }
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +117,7 @@ func incrementCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func initDB() *sql.DB {
-	db, err := sql.Open("postgres", "postgres://username:password@localhost/dbname?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres:postgres//postgres:postgres@localhost:5432/clickers?sslmode=disable")
 	if err != nil {
 		log.Fatal("Failed to connect to the database:", err)
 	}
