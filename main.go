@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
 
 type Counter struct {
@@ -47,10 +46,14 @@ func main() {
 }
 
 func loadEnvVariables() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file:", err)
-	}
+	viper.SetConfigFile("ENV")
+	viper.ReadInConfig()
+	viper.AutomaticEnv()
+
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Fatal("Error loading .env file:", err)
+	// }
 }
 
 func getAllCountsFromDB() error {
@@ -243,7 +246,7 @@ func initDB() *sql.DB {
 	loadEnvVariables()
 
 	// Retrieve the database URI from the environment variable
-	dbURI := os.Getenv("DATABASE_URI")
+	dbURI := fmt.Sprint(viper.Get("DATABASE_URI"))
 
 	// Open the database connection
 	db, err := sql.Open("mysql", dbURI)
