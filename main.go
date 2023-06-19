@@ -41,12 +41,13 @@ func main() {
 	http.HandleFunc("/count", getCountHandler)
 	// http.HandleFunc("/increment", incrementCountHandler)
 
-	log.Println("Starting server on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	port := fmt.Sprint(viper.Get("PORT"))
+	log.Println(`Starting server on port..` + port)
+	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
 }
 
 func loadEnvVariables() {
-	viper.SetConfigFile("ENV")
+	viper.SetConfigFile(".env")
 	viper.ReadInConfig()
 	viper.AutomaticEnv()
 
