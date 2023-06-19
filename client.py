@@ -11,11 +11,12 @@ def on_close(ws):
 
 def on_open(ws):
     def send_message():
-        while True:
-            message = input("Enter message (or 'q' to quit): ")
-            if message == "q":
-                break
-            ws.send(message)
+        # while True:
+        message = input("Enter message (or 'q' to quit): ")
+        if message == "q":
+            # break
+            pass
+        ws.send(message)
 
     print("WebSocket connection opened")
     send_message()
